@@ -35,6 +35,7 @@ setup(
             'motor_node = balance_robot.motor_node:main',
             'diagnostics_node = balance_robot.diagnostics_node:main',
             'safety_state_node = balance_robot.safety_state:main',
+            'teleop_node = balance_robot.teleop_node:main',
         ],
     },
 )

@@ -28,6 +28,7 @@ install(PROGRAMS
   scripts/motor_node
   scripts/diagnostics_node
   scripts/safety_state_node
+  scripts/teleop_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

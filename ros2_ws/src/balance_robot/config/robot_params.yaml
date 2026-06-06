@@ -37,6 +37,15 @@
       allow_motor_commands_only_in_balancing: true
       publish_rate_hz: 10.0
 
+    teleop:
+      enabled: true
+      arm_button: 0
+      balance_button: 1
+      estop_button: 3
+      reset_button: 6
+      deadman_button: 4
+      require_deadman: true
+
     joystick:
       enabled: false
       device: TODO
