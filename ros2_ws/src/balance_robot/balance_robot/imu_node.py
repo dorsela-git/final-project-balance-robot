@@ -9,7 +9,7 @@ class ImuNode(Node):
         super().__init__('imu_node')
         self.declare_parameter('control.mode', 'mock')
         self.mode = self.get_parameter('control.mode').value
-        self.imu = create_imu(self.mode, self.get_logger())
+        self.imu = create_imu(self.mode, self.get_logger(), self)
         self.publisher = self.create_publisher(Imu, '/imu/data', 10)
         self.timer = self.create_timer(0.02, self.publish_imu)
 

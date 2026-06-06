@@ -24,9 +24,9 @@ __all__ = [
 ]
 
 
-def create_imu(mode: str, logger) -> BaseIMU:
+def create_imu(mode: str, logger, node=None) -> BaseIMU:
     if mode == 'hardware':
-        return HardwareIMU(logger)
+        return HardwareIMU(logger, node)
     return MockIMU()
 
 
