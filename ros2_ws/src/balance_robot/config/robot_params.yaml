@@ -1,0 +1,38 @@
+/**:
+  ros__parameters:
+    imu:
+      type: bno086
+      interface: i2c
+      i2c_bus: 1
+      i2c_address: 0x4A
+      frame_id: imu_link
+      publish_rate_hz: 50
+
+    encoders:
+      left_gpio_a: TODO
+      left_gpio_b: TODO
+      right_gpio_a: TODO
+      right_gpio_b: TODO
+      ticks_per_revolution: TODO
+      wheel_radius_m: TODO
+      wheel_base_m: TODO
+      publish_rate_hz: 50
+
+    motors:
+      driver: TODO
+      left_pwm_pin: TODO
+      left_dir_pin: TODO
+      right_pwm_pin: TODO
+      right_dir_pin: TODO
+      pwm_frequency_hz: 1000
+      max_command: 1.0
+
+    control:
+      mode: mock
+      lqr_gain: [0.0, 0.0, 0.0, 0.0]
+      safety_angle_limit_deg: 25.0
+
+    joystick:
+      enabled: false
+      device: TODO
+      topic: /joy_cmd

@@ -1,0 +1,13 @@
+services:
+  ros2_jazzy_dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: ros2_jazzy_dev
+    working_dir: /ros2_ws
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./ros2_ws:/ros2_ws
+      - .:/project
+    command: tail -f /dev/null
