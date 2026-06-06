@@ -6,8 +6,13 @@ class BaseMotorDriver(ABC):
     def apply_command(self, left_motor: float, right_motor: float) -> None:
         pass
 
+    @abstractmethod
     def stop(self) -> None:
-        self.apply_command(0.0, 0.0)
+        pass
+
+    @abstractmethod
+    def emergency_stop(self, reason: str) -> None:
+        pass
 
     def close(self) -> None:
         self.stop()

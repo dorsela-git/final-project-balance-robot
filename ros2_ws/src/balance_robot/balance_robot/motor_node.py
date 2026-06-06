@@ -10,6 +10,7 @@ class MotorNode(Node):
         self.declare_parameter('control.mode', 'mock')
         self.mode = self.get_parameter('control.mode').value
         self.motor_driver = create_motor_driver(self.mode, self.get_logger())
+        self.motor_driver.stop()
         self.command_subscription = self.create_subscription(
             MotorCommand,
             '/motor_command',
@@ -27,6 +28,7 @@ def main(args=None):
     try:
         rclpy.spin(node)
     finally:
+        node.motor_driver.stop()
         node.motor_driver.close()
         node.destroy_node()
         rclpy.shutdown()

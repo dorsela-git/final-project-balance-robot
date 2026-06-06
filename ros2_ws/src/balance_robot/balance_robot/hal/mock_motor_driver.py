@@ -9,3 +9,10 @@ class MockMotorDriver(BaseMotorDriver):
         self._logger.info(
             f'Received motor command: [{left_motor}, {right_motor}]'
         )
+
+    def stop(self) -> None:
+        self._logger.info('Motor stop requested.')
+
+    def emergency_stop(self, reason: str) -> None:
+        self._logger.warn(f'Emergency stop triggered: {reason}')
+        self.stop()
