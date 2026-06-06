@@ -27,6 +27,7 @@ install(PROGRAMS
   scripts/lqr_controller_node
   scripts/motor_node
   scripts/diagnostics_node
+  scripts/safety_state_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -34,6 +34,7 @@ setup(
             'lqr_controller_node = balance_robot.lqr_controller_node:main',
             'motor_node = balance_robot.motor_node:main',
             'diagnostics_node = balance_robot.diagnostics_node:main',
+            'safety_state_node = balance_robot.safety_state:main',
         ],
     },
 )

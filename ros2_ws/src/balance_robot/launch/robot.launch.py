@@ -42,6 +42,13 @@ def generate_launch_description():
         ),
         Node(
             package='balance_robot',
+            executable='safety_state_node',
+            name='safety_state_node',
+            output='screen',
+            parameters=[str(params_file)],
+        ),
+        Node(
+            package='balance_robot',
             executable='motor_node',
             name='motor_node',
             output='screen',

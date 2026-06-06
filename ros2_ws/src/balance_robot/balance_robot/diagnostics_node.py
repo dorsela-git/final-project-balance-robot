@@ -1,7 +1,9 @@
 import rclpy
 from balance_robot.msg import RobotState, SystemStatus, WheelState
+from balance_robot.safety_state import RobotMode
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
+from std_msgs.msg import String
 
 
 class TopicHealth:
@@ -54,6 +56,7 @@ class DiagnosticsNode(Node):
         self.stale_timeout_sec = self.get_parameter('diagnostics.stale_timeout_sec').value
         self.min_frequency_hz = self.get_parameter('diagnostics.min_frequency_hz').value
         publish_rate_hz = self.get_parameter('diagnostics.publish_rate_hz').value
+        self.robot_mode = RobotMode.IDLE.value
 
         self.imu_health = TopicHealth()
         self.encoders_health = TopicHealth()
@@ -62,6 +65,7 @@ class DiagnosticsNode(Node):
         self.create_subscription(Imu, '/imu/data', self.imu_callback, 10)
         self.create_subscription(WheelState, '/wheel_states', self.encoder_callback, 10)
         self.create_subscription(RobotState, '/robot_state', self.estimator_callback, 10)
+        self.create_subscription(String, '/robot_mode', self.robot_mode_callback, 10)
         self.publisher = self.create_publisher(SystemStatus, '/system_status', 10)
         self.timer = self.create_timer(1.0 / publish_rate_hz, self.publish_status)
 
@@ -80,6 +84,12 @@ class DiagnosticsNode(Node):
         del msg
         self.estimator_health.record_message(self._now_sec())
 
+    def robot_mode_callback(self, msg: String) -> None:
+        try:
+            self.robot_mode = RobotMode.from_string(msg.data).value
+        except ValueError:
+            self.get_logger().warn(f'Ignoring invalid robot mode: {msg.data}')
+
     def _controller_is_healthy(self) -> bool:
         node_names = {name.lstrip('/') for name in self.get_node_names()}
         if 'lqr_controller_node' not in node_names:
@@ -91,6 +101,7 @@ class DiagnosticsNode(Node):
         now_sec = self._now_sec()
         status = SystemStatus()
         status.mode = self.mode
+        status.robot_mode = self.robot_mode
         status.imu_ok = self.imu_health.is_healthy(
             now_sec, self.stale_timeout_sec, self.min_frequency_hz
         )

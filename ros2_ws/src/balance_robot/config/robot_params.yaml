@@ -32,6 +32,11 @@
       lqr_gain: [0.0, 0.0, 0.0, 0.0]
       safety_angle_limit_deg: 25.0
 
+    safety:
+      startup_mode: "IDLE"
+      allow_motor_commands_only_in_balancing: true
+      publish_rate_hz: 10.0
+
     joystick:
       enabled: false
       device: TODO
