@@ -30,9 +30,9 @@ def create_imu(mode: str, logger) -> BaseIMU:
     return MockIMU()
 
 
-def create_encoder(mode: str, logger) -> BaseEncoder:
+def create_encoder(mode: str, logger, node=None) -> BaseEncoder:
     if mode == 'hardware':
-        return HardwareEncoder(logger)
+        return HardwareEncoder(logger, node)
     return MockEncoder()
 
 

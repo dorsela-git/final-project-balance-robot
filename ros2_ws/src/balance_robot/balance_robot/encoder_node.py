@@ -9,7 +9,7 @@ class EncoderNode(Node):
         super().__init__('encoder_node')
         self.declare_parameter('control.mode', 'mock')
         self.mode = self.get_parameter('control.mode').value
-        self.encoder = create_encoder(self.mode, self.get_logger())
+        self.encoder = create_encoder(self.mode, self.get_logger(), self)
         self.publisher = self.create_publisher(WheelState, '/wheel_states', 10)
         self.timer = self.create_timer(0.02, self.publish_encoders)
 
