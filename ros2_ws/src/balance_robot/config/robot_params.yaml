@@ -50,11 +50,11 @@
 
     teleop:
       enabled: true
-      arm_button: 1
-      balance_button: 2
-      estop_button: 5
-      reset_button: 4
-      deadman_button: 7
+      arm_button: 0
+      balance_button: 1
+      estop_button: 4
+      reset_button: 3
+      deadman_button: 6
       require_deadman: true
 
     joystick:
