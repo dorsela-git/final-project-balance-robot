@@ -7,7 +7,7 @@ from balance_robot.hal.base_encoder import BaseEncoder
 
 
 class HardwareEncoder(BaseEncoder):
-    """JGB37-520 Hall quadrature encoder foundation for Raspberry Pi GPIO."""
+    """JGB37-520 Hall quadrature encoder for Raspberry Pi GPIO via gpiozero."""
 
     def __init__(self, logger, node=None):
         self._logger = logger
@@ -20,6 +20,8 @@ class HardwareEncoder(BaseEncoder):
         self._gpio_ready = False
         self._readiness_logged = False
 
+        self._left_encoder = None
+        self._right_encoder = None
         self._left_gpio_a = None
         self._left_gpio_b = None
         self._right_gpio_a = None
@@ -46,6 +48,19 @@ class HardwareEncoder(BaseEncoder):
         if isinstance(value, str):
             return value.strip().upper() != 'TODO' and value.strip() != ''
         return True
+
+    @staticmethod
+    def _parse_gpio_pin(value: Any) -> Optional[int]:
+        if not HardwareEncoder._is_configured(value):
+            return None
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float):
+            return int(value)
+        pin_text = str(value).strip().upper()
+        if pin_text.startswith('GPIO'):
+            pin_text = pin_text[4:]
+        return int(pin_text)
 
     def _parse_float_parameter(self, name: str, default: float = 0.0) -> float:
         value = self._get_parameter(name, default)
@@ -75,47 +90,98 @@ class HardwareEncoder(BaseEncoder):
             50.0,
         )
 
-    def _initialize_gpio(self) -> None:
-        pin_values = [
-            self._left_gpio_a,
-            self._left_gpio_b,
-            self._right_gpio_a,
-            self._right_gpio_b,
-        ]
-        pins_configured = all(self._is_configured(pin) for pin in pin_values)
-        calibration_ready = (
-            self._ticks_per_revolution > 0.0
-            and self._wheel_radius_m > 0.0
-            and self._wheel_base_m > 0.0
+    def _left_pins_configured(self) -> bool:
+        return (
+            self._is_configured(self._left_gpio_a)
+            and self._is_configured(self._left_gpio_b)
         )
 
-        gpio_library = None
-        try:
-            import RPi.GPIO as GPIO  # noqa: F401
-            gpio_library = 'RPi.GPIO'
-        except ImportError:
-            gpio_library = None
+    def _right_pins_configured(self) -> bool:
+        return (
+            self._is_configured(self._right_gpio_a)
+            and self._is_configured(self._right_gpio_b)
+        )
 
-        if pins_configured and calibration_ready and gpio_library is not None:
+    def _calibration_ready(self) -> bool:
+        return self._ticks_per_revolution > 0.0 and self._wheel_radius_m > 0.0
+
+    def _initialize_gpio(self) -> None:
+        left_ready = self._left_pins_configured() and self._calibration_ready()
+        if not left_ready:
+            reasons = []
+            if not self._left_pins_configured():
+                reasons.append('left encoder GPIO pins are not configured')
+            if not self._calibration_ready():
+                reasons.append(
+                    'encoder calibration parameters are not ready '
+                    '(ticks_per_revolution and wheel_radius_m required)'
+                )
             self._gpio_ready = False
             self._logger.warn(
-                'TODO: JGB37-520 quadrature GPIO wiring is configured in parameters, '
-                'but encoder interrupt handling is not implemented yet.'
+                'HardwareEncoder is not ready for JGB37-520 encoders: '
+                + '; '.join(reasons)
             )
             return
 
-        reasons = []
-        if not pins_configured:
-            reasons.append('GPIO pins are not configured')
-        if not calibration_ready:
-            reasons.append('encoder calibration parameters are not ready')
-        if gpio_library is None:
-            reasons.append('GPIO library is unavailable in this environment')
+        try:
+            from gpiozero import RotaryEncoder
+        except ImportError:
+            self._gpio_ready = False
+            self._logger.warn(
+                'HardwareEncoder is not ready for JGB37-520 encoders: '
+                'gpiozero is unavailable in this environment'
+            )
+            return
 
-        self._gpio_ready = False
-        self._logger.warn(
-            'TODO: HardwareEncoder is not ready for JGB37-520 encoders: '
-            + '; '.join(reasons)
+        left_pin_a = self._parse_gpio_pin(self._left_gpio_a)
+        left_pin_b = self._parse_gpio_pin(self._left_gpio_b)
+        if left_pin_a is None or left_pin_b is None:
+            self._gpio_ready = False
+            self._logger.warn(
+                'HardwareEncoder is not ready for JGB37-520 encoders: '
+                'left encoder GPIO pins could not be parsed'
+            )
+            return
+
+        try:
+            self._left_encoder = RotaryEncoder(left_pin_a, left_pin_b, max_steps=0)
+        except Exception as exc:
+            self._gpio_ready = False
+            self._logger.warn(
+                'HardwareEncoder failed to initialize left encoder on '
+                f'GPIO{left_pin_a}/GPIO{left_pin_b}: {exc}'
+            )
+            return
+
+        self._gpio_ready = True
+        mode = 'left-only'
+        if self._right_pins_configured():
+            right_pin_a = self._parse_gpio_pin(self._right_gpio_a)
+            right_pin_b = self._parse_gpio_pin(self._right_gpio_b)
+            if right_pin_a is not None and right_pin_b is not None:
+                try:
+                    self._right_encoder = RotaryEncoder(
+                        right_pin_a,
+                        right_pin_b,
+                        max_steps=0,
+                    )
+                    mode = 'left and right'
+                except Exception as exc:
+                    self._logger.warn(
+                        'Right encoder GPIO pins are configured but initialization '
+                        f'failed; right wheel will remain zero: {exc}'
+                    )
+        else:
+            self._logger.info(
+                'Right encoder pins are not configured; right wheel fields will '
+                'remain zero.'
+            )
+
+        self._logger.info(
+            'HardwareEncoder ready in '
+            f'{mode} mode: left GPIO{left_pin_a}/GPIO{left_pin_b}, '
+            f'ticks_per_revolution={self._ticks_per_revolution:.0f}, '
+            f'wheel_radius_m={self._wheel_radius_m:.3f}'
         )
 
     def _now_sec(self) -> float:
@@ -151,9 +217,24 @@ class HardwareEncoder(BaseEncoder):
             return
         self._readiness_logged = True
         self._logger.warn(
-            'TODO: HardwareEncoder read() is returning zero WheelState until '
-            'JGB37-520 GPIO quadrature support is implemented.'
+            'HardwareEncoder read() is returning zero WheelState because GPIO '
+            'initialization did not succeed.'
         )
+
+    def _sample_ticks(self) -> None:
+        if self._left_encoder is not None:
+            # Forward wheel rotation should increase left_position.
+            self._left_ticks = self._left_encoder.steps
+        if self._right_encoder is not None:
+            self._right_ticks = self._right_encoder.steps
+        else:
+            self._right_ticks = 0
+
+    def _reset_encoder_devices(self) -> None:
+        if self._left_encoder is not None:
+            self._left_encoder.steps = 0
+        if self._right_encoder is not None:
+            self._right_encoder.steps = 0
 
     def reset(self) -> None:
         self._left_ticks = 0
@@ -161,11 +242,15 @@ class HardwareEncoder(BaseEncoder):
         self._previous_timestamp_sec = None
         self._previous_left_ticks = 0
         self._previous_right_ticks = 0
+        if self._gpio_ready:
+            self._reset_encoder_devices()
 
     def read(self) -> Optional[WheelState]:
         if not self._gpio_ready:
             self._log_readiness_once()
             return self._zero_wheel_state()
+
+        self._sample_ticks()
 
         now_sec = self._now_sec()
         if self._previous_timestamp_sec is None:
@@ -193,4 +278,10 @@ class HardwareEncoder(BaseEncoder):
         return msg
 
     def close(self) -> None:
+        if self._left_encoder is not None:
+            self._left_encoder.close()
+            self._left_encoder = None
+        if self._right_encoder is not None:
+            self._right_encoder.close()
+            self._right_encoder = None
         self.reset()

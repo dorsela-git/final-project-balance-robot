@@ -9,12 +9,14 @@
       publish_rate_hz: 50
 
     encoders:
-      left_gpio_a: TODO
-      left_gpio_b: TODO
+      left_gpio_a: 17
+      left_gpio_b: 27
       right_gpio_a: TODO
       right_gpio_b: TODO
-      ticks_per_revolution: TODO
-      wheel_radius_m: TODO
+      # TEMPORARY: 11 motor PPR x 56:1 gearbox x 4 quadrature edges.
+      # Calibrate on hardware before trusting absolute position/RPM scale.
+      ticks_per_revolution: 2464
+      wheel_radius_m: 0.03
       wheel_base_m: TODO
       publish_rate_hz: 50
 
