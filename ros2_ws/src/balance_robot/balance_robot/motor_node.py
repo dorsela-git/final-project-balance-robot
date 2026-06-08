@@ -18,7 +18,7 @@ class MotorNode(Node):
         )
         self.robot_mode = RobotMode.IDLE
 
-        self.motor_driver = create_motor_driver(self.mode, self.get_logger())
+        self.motor_driver = create_motor_driver(self.mode, self.get_logger(), self)
         self.motor_driver.stop()
         self.create_subscription(String, '/robot_mode', self._robot_mode_callback, 10)
         self.command_subscription = self.create_subscription(

@@ -36,7 +36,7 @@ def create_encoder(mode: str, logger, node=None) -> BaseEncoder:
     return MockEncoder()
 
 
-def create_motor_driver(mode: str, logger) -> BaseMotorDriver:
+def create_motor_driver(mode: str, logger, node=None) -> BaseMotorDriver:
     if mode == 'hardware':
-        return HardwareMotorDriver(logger)
+        return HardwareMotorDriver(logger, node)
     return MockMotorDriver(logger)

@@ -21,11 +21,13 @@
       publish_rate_hz: 50
 
     motors:
-      driver: TODO
-      left_pwm_pin: TODO
-      left_dir_pin: TODO
-      right_pwm_pin: TODO
-      right_dir_pin: TODO
+      driver: dbh-12v
+      left_in1_pin: 5
+      left_in2_pin: 6
+      left_en_pin: 13
+      right_in1_pin: TODO
+      right_in2_pin: TODO
+      right_en_pin: TODO
       pwm_frequency_hz: 1000
       max_command: 1.0
 
