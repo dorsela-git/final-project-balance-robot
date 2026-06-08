@@ -1,22 +1,48 @@
+import math
+
 import rclpy
 from balance_robot.msg import RobotState, WheelState
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
 
+IMU_STALE_TIMEOUT_SEC = 0.1
+
+_GYRO_AXIS_GETTERS = {
+    'x': lambda velocity: velocity.x,
+    'y': lambda velocity: velocity.y,
+    'z': lambda velocity: velocity.z,
+}
+
+
+def _quaternion_to_pitch(x: float, y: float, z: float, w: float) -> float:
+    sin_pitch = 2.0 * ((w * y) - (z * x))
+    sin_pitch = max(-1.0, min(1.0, sin_pitch))
+    return math.asin(sin_pitch)
+
 
 class StateEstimatorNode(Node):
     def __init__(self):
         super().__init__('state_estimator_node')
-        self.declare_parameter('control.mode', 'mock')
-        self.mode = self.get_parameter('control.mode').value
-        if self.mode == 'hardware':
-            self.get_logger().warn(
-                'TODO: hardware mode selected for state_estimator_node, '
-                'but real state estimation is not implemented yet.'
+        self.declare_parameter('estimator.imu_topic', '/imu/data')
+        self.declare_parameter('estimator.theta_sign', 1.0)
+        self.declare_parameter('estimator.theta_dot_sign', 1.0)
+        self.declare_parameter('estimator.theta_offset_rad', 0.0)
+        self.declare_parameter('estimator.theta_dot_axis', 'y')
+
+        self.imu_topic = self.get_parameter('estimator.imu_topic').value
+        self.theta_sign = self.get_parameter('estimator.theta_sign').value
+        self.theta_dot_sign = self.get_parameter('estimator.theta_dot_sign').value
+        self.theta_offset_rad = self.get_parameter('estimator.theta_offset_rad').value
+        theta_dot_axis = self.get_parameter('estimator.theta_dot_axis').value
+        if theta_dot_axis not in _GYRO_AXIS_GETTERS:
+            raise ValueError(
+                f'estimator.theta_dot_axis must be x, y, or z; got {theta_dot_axis!r}'
             )
+        self.theta_dot_axis = theta_dot_axis
+
         self.imu_subscription = self.create_subscription(
             Imu,
-            '/imu/data',
+            self.imu_topic,
             self.imu_callback,
             10,
         )
@@ -29,23 +55,71 @@ class StateEstimatorNode(Node):
         self.publisher = self.create_publisher(RobotState, '/robot_state', 10)
         self.timer = self.create_timer(0.02, self.publish_state)
         self.latest_imu = None
+        self.latest_imu_time_sec = None
         self.latest_encoders = None
 
     def imu_callback(self, msg):
         self.latest_imu = msg
+        self.latest_imu_time_sec = self.get_clock().now().nanoseconds / 1e9
 
     def encoder_callback(self, msg):
         self.latest_encoders = msg
 
+    def _imu_is_stale(self) -> bool:
+        if self.latest_imu is None or self.latest_imu_time_sec is None:
+            return True
+        now_sec = self.get_clock().now().nanoseconds / 1e9
+        return (now_sec - self.latest_imu_time_sec) > IMU_STALE_TIMEOUT_SEC
+
+    def _imu_to_theta(self, imu_msg: Imu):
+        orientation = imu_msg.orientation
+        norm = math.sqrt(
+            orientation.x ** 2
+            + orientation.y ** 2
+            + orientation.z ** 2
+            + orientation.w ** 2
+        )
+        if norm < 1e-6:
+            return None
+
+        if abs(norm - 1.0) > 1e-3:
+            quaternion = [
+                orientation.x / norm,
+                orientation.y / norm,
+                orientation.z / norm,
+                orientation.w / norm,
+            ]
+        else:
+            quaternion = [
+                orientation.x,
+                orientation.y,
+                orientation.z,
+                orientation.w,
+            ]
+
+        pitch = _quaternion_to_pitch(*quaternion)
+        theta = (self.theta_sign * pitch) - self.theta_offset_rad
+        angular_velocity = imu_msg.angular_velocity
+        theta_dot = (
+            self.theta_dot_sign
+            * _GYRO_AXIS_GETTERS[self.theta_dot_axis](angular_velocity)
+        )
+        return theta, theta_dot
+
     def publish_state(self):
-        if self.mode == 'hardware':
+        if self._imu_is_stale():
             return
 
+        estimate = self._imu_to_theta(self.latest_imu)
+        if estimate is None:
+            return
+
+        theta, theta_dot = estimate
         msg = RobotState()
         msg.x = 0.0
         msg.x_dot = 0.0
-        msg.theta = 0.0
-        msg.theta_dot = 0.0
+        msg.theta = theta
+        msg.theta_dot = theta_dot
         self.publisher.publish(msg)
 
 
