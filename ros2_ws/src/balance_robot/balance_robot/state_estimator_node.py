@@ -28,11 +28,23 @@ class StateEstimatorNode(Node):
         self.declare_parameter('estimator.theta_dot_sign', 1.0)
         self.declare_parameter('estimator.theta_offset_rad', 0.0)
         self.declare_parameter('estimator.theta_dot_axis', 'y')
+        self.declare_parameter('estimator.encoder_stale_timeout_sec', 0.1)
+        self.declare_parameter('estimator.left_wheel_sign', 1.0)
+        self.declare_parameter('estimator.right_wheel_sign', 1.0)
+        self.declare_parameter('estimator.x_sign', 1.0)
+        self.declare_parameter('estimator.x_offset_m', 0.0)
 
         self.imu_topic = self.get_parameter('estimator.imu_topic').value
         self.theta_sign = self.get_parameter('estimator.theta_sign').value
         self.theta_dot_sign = self.get_parameter('estimator.theta_dot_sign').value
         self.theta_offset_rad = self.get_parameter('estimator.theta_offset_rad').value
+        self.encoder_stale_timeout_sec = self.get_parameter(
+            'estimator.encoder_stale_timeout_sec'
+        ).value
+        self.left_wheel_sign = self.get_parameter('estimator.left_wheel_sign').value
+        self.right_wheel_sign = self.get_parameter('estimator.right_wheel_sign').value
+        self.x_sign = self.get_parameter('estimator.x_sign').value
+        self.x_offset_m = self.get_parameter('estimator.x_offset_m').value
         theta_dot_axis = self.get_parameter('estimator.theta_dot_axis').value
         if theta_dot_axis not in _GYRO_AXIS_GETTERS:
             raise ValueError(
@@ -57,6 +69,7 @@ class StateEstimatorNode(Node):
         self.latest_imu = None
         self.latest_imu_time_sec = None
         self.latest_encoders = None
+        self.latest_encoder_time_sec = None
 
     def imu_callback(self, msg):
         self.latest_imu = msg
@@ -64,12 +77,34 @@ class StateEstimatorNode(Node):
 
     def encoder_callback(self, msg):
         self.latest_encoders = msg
+        self.latest_encoder_time_sec = self.get_clock().now().nanoseconds / 1e9
 
     def _imu_is_stale(self) -> bool:
         if self.latest_imu is None or self.latest_imu_time_sec is None:
             return True
         now_sec = self.get_clock().now().nanoseconds / 1e9
         return (now_sec - self.latest_imu_time_sec) > IMU_STALE_TIMEOUT_SEC
+
+    def _encoders_are_stale(self) -> bool:
+        if self.latest_encoders is None or self.latest_encoder_time_sec is None:
+            return True
+        now_sec = self.get_clock().now().nanoseconds / 1e9
+        return (
+            now_sec - self.latest_encoder_time_sec
+        ) > self.encoder_stale_timeout_sec
+
+    def _wheel_state_to_x(self, wheel_msg: WheelState):
+        left_position = self.left_wheel_sign * wheel_msg.left_position
+        right_position = self.right_wheel_sign * wheel_msg.right_position
+        left_velocity = self.left_wheel_sign * wheel_msg.left_velocity
+        right_velocity = self.right_wheel_sign * wheel_msg.right_velocity
+
+        x = (
+            self.x_sign * ((left_position + right_position) / 2.0)
+            - self.x_offset_m
+        )
+        x_dot = self.x_sign * ((left_velocity + right_velocity) / 2.0)
+        return x, x_dot
 
     def _imu_to_theta(self, imu_msg: Imu):
         orientation = imu_msg.orientation
@@ -107,7 +142,7 @@ class StateEstimatorNode(Node):
         return theta, theta_dot
 
     def publish_state(self):
-        if self._imu_is_stale():
+        if self._imu_is_stale() or self._encoders_are_stale():
             return
 
         estimate = self._imu_to_theta(self.latest_imu)
@@ -115,9 +150,10 @@ class StateEstimatorNode(Node):
             return
 
         theta, theta_dot = estimate
+        x, x_dot = self._wheel_state_to_x(self.latest_encoders)
         msg = RobotState()
-        msg.x = 0.0
-        msg.x_dot = 0.0
+        msg.x = x
+        msg.x_dot = x_dot
         msg.theta = theta
         msg.theta_dot = theta_dot
         self.publisher.publish(msg)

@@ -36,7 +36,7 @@ class HardwareMotorDriver(BaseMotorDriver):
         if self._node is None:
             return default
         if not self._node.has_parameter(name):
-            self._node.declare_parameter(name, default)
+            return default
         return self._node.get_parameter(name).value
 
     @staticmethod
@@ -45,6 +45,8 @@ class HardwareMotorDriver(BaseMotorDriver):
             return False
         if isinstance(value, str):
             return value.strip().upper() != 'TODO' and value.strip() != ''
+        if isinstance(value, (int, float)):
+            return int(value) >= 0
         return True
 
     @staticmethod
@@ -77,13 +79,13 @@ class HardwareMotorDriver(BaseMotorDriver):
             self._get_parameter('motors.left_en_pin', 13),
         )
         self._right_in1_pin = self._parse_gpio_pin(
-            self._get_parameter('motors.right_in1_pin', 'TODO'),
+            self._get_parameter('motors.right_in1_pin', -1),
         )
         self._right_in2_pin = self._parse_gpio_pin(
-            self._get_parameter('motors.right_in2_pin', 'TODO'),
+            self._get_parameter('motors.right_in2_pin', -1),
         )
         self._right_en_pin = self._parse_gpio_pin(
-            self._get_parameter('motors.right_en_pin', 'TODO'),
+            self._get_parameter('motors.right_en_pin', -1),
         )
         self._pwm_frequency_hz = self._parse_float_parameter(
             'motors.pwm_frequency_hz',

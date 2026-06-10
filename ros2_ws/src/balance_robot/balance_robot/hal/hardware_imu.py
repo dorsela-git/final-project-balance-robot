@@ -29,7 +29,7 @@ class HardwareIMU(BaseIMU):
         if self._node is None:
             return default
         if not self._node.has_parameter(name):
-            self._node.declare_parameter(name, default)
+            return default
         return self._node.get_parameter(name).value
 
     @staticmethod

@@ -38,7 +38,7 @@ class HardwareEncoder(BaseEncoder):
         if self._node is None:
             return default
         if not self._node.has_parameter(name):
-            self._node.declare_parameter(name, default)
+            return default
         return self._node.get_parameter(name).value
 
     @staticmethod
@@ -47,6 +47,8 @@ class HardwareEncoder(BaseEncoder):
             return False
         if isinstance(value, str):
             return value.strip().upper() != 'TODO' and value.strip() != ''
+        if isinstance(value, (int, float)):
+            return int(value) >= 0
         return True
 
     @staticmethod
@@ -69,10 +71,10 @@ class HardwareEncoder(BaseEncoder):
         return float(value)
 
     def _load_parameters(self) -> None:
-        self._left_gpio_a = self._get_parameter('encoders.left_gpio_a', 'TODO')
-        self._left_gpio_b = self._get_parameter('encoders.left_gpio_b', 'TODO')
-        self._right_gpio_a = self._get_parameter('encoders.right_gpio_a', 'TODO')
-        self._right_gpio_b = self._get_parameter('encoders.right_gpio_b', 'TODO')
+        self._left_gpio_a = self._get_parameter('encoders.left_gpio_a', -1)
+        self._left_gpio_b = self._get_parameter('encoders.left_gpio_b', -1)
+        self._right_gpio_a = self._get_parameter('encoders.right_gpio_a', -1)
+        self._right_gpio_b = self._get_parameter('encoders.right_gpio_b', -1)
         self._ticks_per_revolution = self._parse_float_parameter(
             'encoders.ticks_per_revolution',
             0.0,
