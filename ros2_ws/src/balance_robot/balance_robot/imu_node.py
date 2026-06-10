@@ -1,14 +1,14 @@
 import rclpy
 from balance_robot.hal import create_imu
+from balance_robot.param_utils import NODE_PARAM_AUTO_DECLARE, get_param_or_default
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
 
 
 class ImuNode(Node):
     def __init__(self):
-        super().__init__('imu_node')
-        self.declare_parameter('control.mode', 'mock')
-        self.mode = self.get_parameter('control.mode').value
+        super().__init__('imu_node', **NODE_PARAM_AUTO_DECLARE)
+        self.mode = get_param_or_default(self, 'control.mode', 'mock')
         self.imu = create_imu(self.mode, self.get_logger(), self)
         self.publisher = self.create_publisher(Imu, '/imu/data', 10)
         self.timer = self.create_timer(0.02, self.publish_imu)

@@ -1,5 +1,6 @@
 import rclpy
 from balance_robot.msg import RobotState, SystemStatus, WheelState
+from balance_robot.param_utils import NODE_PARAM_AUTO_DECLARE, get_param_or_default
 from balance_robot.safety_state import RobotMode
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
@@ -46,16 +47,24 @@ class TopicHealth:
 
 class DiagnosticsNode(Node):
     def __init__(self):
-        super().__init__('diagnostics_node')
-        self.declare_parameter('control.mode', 'mock')
-        self.declare_parameter('diagnostics.stale_timeout_sec', 0.5)
-        self.declare_parameter('diagnostics.min_frequency_hz', 10.0)
-        self.declare_parameter('diagnostics.publish_rate_hz', 10.0)
+        super().__init__('diagnostics_node', **NODE_PARAM_AUTO_DECLARE)
 
-        self.mode = self.get_parameter('control.mode').value
-        self.stale_timeout_sec = self.get_parameter('diagnostics.stale_timeout_sec').value
-        self.min_frequency_hz = self.get_parameter('diagnostics.min_frequency_hz').value
-        publish_rate_hz = self.get_parameter('diagnostics.publish_rate_hz').value
+        self.mode = get_param_or_default(self, 'control.mode', 'mock')
+        self.stale_timeout_sec = get_param_or_default(
+            self,
+            'diagnostics.stale_timeout_sec',
+            0.5,
+        )
+        self.min_frequency_hz = get_param_or_default(
+            self,
+            'diagnostics.min_frequency_hz',
+            10.0,
+        )
+        publish_rate_hz = get_param_or_default(
+            self,
+            'diagnostics.publish_rate_hz',
+            10.0,
+        )
         self.robot_mode = RobotMode.IDLE.value
 
         self.imu_health = TopicHealth()

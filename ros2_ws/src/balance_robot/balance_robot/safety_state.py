@@ -1,6 +1,7 @@
 from enum import Enum
 
 import rclpy
+from balance_robot.param_utils import NODE_PARAM_AUTO_DECLARE, get_param_or_default
 from rclpy.node import Node
 from std_msgs.msg import String
 
@@ -69,14 +70,12 @@ class SafetyStateManager:
 
 class SafetyStateNode(Node):
     def __init__(self):
-        super().__init__('safety_state_node')
-        self.declare_parameter('safety.startup_mode', 'IDLE')
-        self.declare_parameter('safety.publish_rate_hz', 10.0)
+        super().__init__('safety_state_node', **NODE_PARAM_AUTO_DECLARE)
 
         startup_mode = RobotMode.from_string(
-            self.get_parameter('safety.startup_mode').value
+            get_param_or_default(self, 'safety.startup_mode', 'IDLE')
         )
-        publish_rate_hz = self.get_parameter('safety.publish_rate_hz').value
+        publish_rate_hz = get_param_or_default(self, 'safety.publish_rate_hz', 10.0)
 
         self._manager = SafetyStateManager(startup_mode=startup_mode)
         self._mode_publisher = self.create_publisher(String, '/robot_mode', 10)

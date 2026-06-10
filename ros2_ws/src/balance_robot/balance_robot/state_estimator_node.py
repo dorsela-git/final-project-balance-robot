@@ -2,6 +2,7 @@ import math
 
 import rclpy
 from balance_robot.msg import RobotState, WheelState
+from balance_robot.param_utils import NODE_PARAM_AUTO_DECLARE, get_param_or_default
 from rclpy.node import Node
 from sensor_msgs.msg import Imu
 
@@ -22,30 +23,34 @@ def _quaternion_to_pitch(x: float, y: float, z: float, w: float) -> float:
 
 class StateEstimatorNode(Node):
     def __init__(self):
-        super().__init__('state_estimator_node')
-        self.declare_parameter('estimator.imu_topic', '/imu/data')
-        self.declare_parameter('estimator.theta_sign', 1.0)
-        self.declare_parameter('estimator.theta_dot_sign', 1.0)
-        self.declare_parameter('estimator.theta_offset_rad', 0.0)
-        self.declare_parameter('estimator.theta_dot_axis', 'y')
-        self.declare_parameter('estimator.encoder_stale_timeout_sec', 0.1)
-        self.declare_parameter('estimator.left_wheel_sign', 1.0)
-        self.declare_parameter('estimator.right_wheel_sign', 1.0)
-        self.declare_parameter('estimator.x_sign', 1.0)
-        self.declare_parameter('estimator.x_offset_m', 0.0)
+        super().__init__('state_estimator_node', **NODE_PARAM_AUTO_DECLARE)
 
-        self.imu_topic = self.get_parameter('estimator.imu_topic').value
-        self.theta_sign = self.get_parameter('estimator.theta_sign').value
-        self.theta_dot_sign = self.get_parameter('estimator.theta_dot_sign').value
-        self.theta_offset_rad = self.get_parameter('estimator.theta_offset_rad').value
-        self.encoder_stale_timeout_sec = self.get_parameter(
-            'estimator.encoder_stale_timeout_sec'
-        ).value
-        self.left_wheel_sign = self.get_parameter('estimator.left_wheel_sign').value
-        self.right_wheel_sign = self.get_parameter('estimator.right_wheel_sign').value
-        self.x_sign = self.get_parameter('estimator.x_sign').value
-        self.x_offset_m = self.get_parameter('estimator.x_offset_m').value
-        theta_dot_axis = self.get_parameter('estimator.theta_dot_axis').value
+        self.imu_topic = get_param_or_default(self, 'estimator.imu_topic', '/imu/data')
+        self.theta_sign = get_param_or_default(self, 'estimator.theta_sign', 1.0)
+        self.theta_dot_sign = get_param_or_default(self, 'estimator.theta_dot_sign', 1.0)
+        self.theta_offset_rad = get_param_or_default(
+            self,
+            'estimator.theta_offset_rad',
+            0.0,
+        )
+        self.encoder_stale_timeout_sec = get_param_or_default(
+            self,
+            'estimator.encoder_stale_timeout_sec',
+            0.1,
+        )
+        self.left_wheel_sign = get_param_or_default(
+            self,
+            'estimator.left_wheel_sign',
+            1.0,
+        )
+        self.right_wheel_sign = get_param_or_default(
+            self,
+            'estimator.right_wheel_sign',
+            1.0,
+        )
+        self.x_sign = get_param_or_default(self, 'estimator.x_sign', 1.0)
+        self.x_offset_m = get_param_or_default(self, 'estimator.x_offset_m', 0.0)
+        theta_dot_axis = get_param_or_default(self, 'estimator.theta_dot_axis', 'y')
         if theta_dot_axis not in _GYRO_AXIS_GETTERS:
             raise ValueError(
                 f'estimator.theta_dot_axis must be x, y, or z; got {theta_dot_axis!r}'

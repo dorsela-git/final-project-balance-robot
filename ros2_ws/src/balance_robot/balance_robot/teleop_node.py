@@ -1,4 +1,5 @@
 import rclpy
+from balance_robot.param_utils import NODE_PARAM_AUTO_DECLARE, get_param_or_default
 from rclpy.node import Node
 from sensor_msgs.msg import Joy
 from std_msgs.msg import String
@@ -6,26 +7,19 @@ from std_msgs.msg import String
 
 class TeleopNode(Node):
     def __init__(self):
-        super().__init__('teleop_node')
-        self.declare_parameter('teleop.enabled', True)
-        self.declare_parameter('teleop.arm_button', 0)
-        self.declare_parameter('teleop.balance_button', 1)
-        self.declare_parameter('teleop.estop_button', 3)
-        self.declare_parameter('teleop.reset_button', 6)
-        self.declare_parameter('teleop.deadman_button', 4)
-        self.declare_parameter('teleop.require_deadman', True)
+        super().__init__('teleop_node', **NODE_PARAM_AUTO_DECLARE)
 
-        self.enabled = self.get_parameter('teleop.enabled').value
+        self.enabled = get_param_or_default(self, 'teleop.enabled', True)
         if not self.enabled:
             self.get_logger().info('Teleop disabled by parameter; node will idle.')
             return
 
-        self.arm_button = self.get_parameter('teleop.arm_button').value
-        self.balance_button = self.get_parameter('teleop.balance_button').value
-        self.estop_button = self.get_parameter('teleop.estop_button').value
-        self.reset_button = self.get_parameter('teleop.reset_button').value
-        self.deadman_button = self.get_parameter('teleop.deadman_button').value
-        self.require_deadman = self.get_parameter('teleop.require_deadman').value
+        self.arm_button = get_param_or_default(self, 'teleop.arm_button', 0)
+        self.balance_button = get_param_or_default(self, 'teleop.balance_button', 1)
+        self.estop_button = get_param_or_default(self, 'teleop.estop_button', 3)
+        self.reset_button = get_param_or_default(self, 'teleop.reset_button', 6)
+        self.deadman_button = get_param_or_default(self, 'teleop.deadman_button', 4)
+        self.require_deadman = get_param_or_default(self, 'teleop.require_deadman', True)
 
         self._previous_buttons = []
         self._mode_request_publisher = self.create_publisher(String, '/robot_mode/request', 10)

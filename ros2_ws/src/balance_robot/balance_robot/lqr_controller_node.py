@@ -2,6 +2,7 @@ import math
 
 import rclpy
 from balance_robot.msg import MotorCommand, RobotState
+from balance_robot.param_utils import NODE_PARAM_AUTO_DECLARE, get_param_or_default
 from rclpy.node import Node
 
 STATE_STALE_TIMEOUT_SEC = 0.1
@@ -9,18 +10,22 @@ STATE_STALE_TIMEOUT_SEC = 0.1
 
 class LqrControllerNode(Node):
     def __init__(self):
-        super().__init__('lqr_controller_node')
-        self.declare_parameter('control.mode', 'mock')
-        self.declare_parameter('control.safety_angle_limit_deg', 25.0)
-        self.declare_parameter('control.lqr_gain', [0.0, 0.0, 0.0, 0.0])
-        self.declare_parameter('motors.max_command', 1.0)
+        super().__init__('lqr_controller_node', **NODE_PARAM_AUTO_DECLARE)
 
-        safety_angle_limit_deg = self.get_parameter(
-            'control.safety_angle_limit_deg'
-        ).value
+        safety_angle_limit_deg = get_param_or_default(
+            self,
+            'control.safety_angle_limit_deg',
+            25.0,
+        )
         self.safety_angle_limit_rad = math.radians(safety_angle_limit_deg)
-        self.lqr_gain = list(self.get_parameter('control.lqr_gain').value)
-        self.max_command = self.get_parameter('motors.max_command').value
+        self.lqr_gain = list(
+            get_param_or_default(
+                self,
+                'control.lqr_gain',
+                [0.0, 0.0, 0.0, 0.0],
+            )
+        )
+        self.max_command = get_param_or_default(self, 'motors.max_command', 1.0)
 
         self.safety_stop_active = False
         self.state_subscription = self.create_subscription(

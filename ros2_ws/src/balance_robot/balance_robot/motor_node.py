@@ -1,6 +1,7 @@
 import rclpy
 from balance_robot.hal import create_motor_driver
 from balance_robot.msg import MotorCommand
+from balance_robot.param_utils import NODE_PARAM_AUTO_DECLARE, get_param_or_default
 from balance_robot.safety_state import RobotMode
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -8,13 +9,12 @@ from std_msgs.msg import String
 
 class MotorNode(Node):
     def __init__(self):
-        super().__init__('motor_node')
-        self.declare_parameter('control.mode', 'mock')
-        self.declare_parameter('safety.allow_motor_commands_only_in_balancing', True)
-
-        self.mode = self.get_parameter('control.mode').value
-        self.allow_motor_commands_only_in_balancing = (
-            self.get_parameter('safety.allow_motor_commands_only_in_balancing').value
+        super().__init__('motor_node', **NODE_PARAM_AUTO_DECLARE)
+        self.mode = get_param_or_default(self, 'control.mode', 'mock')
+        self.allow_motor_commands_only_in_balancing = get_param_or_default(
+            self,
+            'safety.allow_motor_commands_only_in_balancing',
+            True,
         )
         self.robot_mode = RobotMode.IDLE
 
